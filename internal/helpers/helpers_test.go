@@ -7,6 +7,7 @@ import (
 )
 
 func TestStrToTime(t *testing.T) {
+	location, _ := time.LoadLocation("Europe/Moscow")
 	type args struct {
 		str string
 	}
@@ -18,9 +19,9 @@ func TestStrToTime(t *testing.T) {
 		{
 			name: "test",
 			args: args{
-				str: "29 янв 2023 в 12:05",
+				str: "17 окт 2022",
 			},
-			want: time.Date(2023, time.January, 29, 18, 5, 0, 0, time.UTC),
+			want: time.Date(2022, time.October, 17, 12, 0, 0, 0, location),
 		},
 	}
 	for _, tt := range tests {

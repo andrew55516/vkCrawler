@@ -25,17 +25,25 @@ func StrToTime(str string) time.Time {
 	}
 
 	var timeStr string
+	str = strings.Replace(str, " ", " ", -1)
 	parts := strings.Split(str, " ")
 	switch parts[0] {
 	case "сегодня":
-		timeStr = fmt.Sprintf("2023-03-13 %s", parts[2])
+		timeStr = fmt.Sprintf("2023-03-21 %s", parts[2])
 	case "вчера":
-		timeStr = fmt.Sprintf("2023-03-12 %s", parts[2])
+		timeStr = fmt.Sprintf("2023-03-20 %s", parts[2])
 	default:
 		if len(parts[0]) == 1 {
 			parts[0] = "0" + parts[0]
 		}
-		timeStr = fmt.Sprintf("%s-%s-%s %s", parts[2], months[parts[1]], parts[0], parts[4])
+		switch len(parts) {
+		case 5:
+			timeStr = fmt.Sprintf("%s-%s-%s %s", parts[2], months[parts[1]], parts[0], parts[4])
+		case 4:
+			timeStr = fmt.Sprintf("2023-%s-%s %s", months[parts[1]], parts[0], parts[3])
+		case 3:
+			timeStr = fmt.Sprintf("%s-%s-%s 12:00", parts[2], months[parts[1]], parts[0])
+		}
 
 	}
 	t, _ := time.ParseInLocation(layout, timeStr, location)

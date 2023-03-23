@@ -87,15 +87,17 @@ func WriteDownLike(postID int, owner string) {
 	}
 }
 
-func WriteDownComment(postID int, owner string) {
+func WriteDownComment(postID int, owner string, threadOwner string, created time.Time) {
 	args := WriteDownCommentParams{
-		PostID: int64(postID),
-		Owner:  owner,
+		PostID:      int64(postID),
+		Owner:       owner,
+		ThreadOwner: threadOwner,
+		CreatedAt:   created,
 	}
 
-	if checkIfCommentExists(args.PostID, args.Owner) {
-		return
-	}
+	//if checkIfCommentExists(args.PostID, args.Owner) {
+	//	return
+	//}
 
 	_, err := Q.WriteDownComment(context.Background(), args)
 	if err != nil {

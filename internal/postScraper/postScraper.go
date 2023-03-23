@@ -15,30 +15,44 @@ import (
 	"sync"
 	"time"
 	db "vkCrawler/db/sqlc"
+	"vkCrawler/internal/helpers"
 )
 
 const root = "https://m.vk.com"
 
 var Headers = map[string]string{
-	"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-	//"Accept-Encoding": "gzip, deflate, br",
+	"Accept":          "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
 	"Accept-Language": "ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3",
 	"User-Agent":      "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/110.0",
 	"Sec-Fetch-Dest":  "document",
 }
 
-var mu = &sync.Mutex{}
 var wg sync.WaitGroup
+var wg1 sync.WaitGroup
 
 type toScrape struct {
 	postID int
 	link   string
 }
 
+type Comment struct {
+	Owner       string
+	ThreadOwner string
+	Created     time.Time
+}
+
 var proxyLists = []string{
 	"https://raw.githubusercontent.com/TheSpeedX/SOCKS-List/master/http.txt",
 	"https://raw.githubusercontent.com/clarketm/proxy-list/master/proxy-list-raw.txt",
 	"https://raw.githubusercontent.com/shiftytr/proxy-list/master/proxy.txt",
+}
+
+var updatedPosts = struct {
+	updated int
+	mu      sync.Mutex
+}{
+	updated: 0,
+	mu:      sync.Mutex{},
 }
 
 func ScrapeAllPosts() {
@@ -67,6 +81,7 @@ func ScrapeAllPosts() {
 		failed := make(chan toScrape, len(proxies))
 
 		for i := 0; i < len(proxies); i++ {
+			wg1.Add(1)
 			go scrapePost(toScrapeList[0], success, failed, i, proxies[i])
 			toScrapeList = toScrapeList[1:]
 
@@ -83,11 +98,12 @@ func ScrapeAllPosts() {
 			case p := <-failed:
 				toScrapeList = append([]toScrape{p}, toScrapeList...)
 				failedProxies++
-				fmt.Println(">>", failedProxies)
+				fmt.Println(">>", len(proxies)-failedProxies)
 
 			case i := <-success:
 				//fmt.Println(i)
 				if len(toScrapeList) > 0 {
+					wg1.Add(1)
 					go scrapePost(toScrapeList[0], success, failed, i, proxies[i])
 					toScrapeList = toScrapeList[1:]
 				}
@@ -102,30 +118,34 @@ func ScrapeAllPosts() {
 			close(failed)
 			break
 		}
+		fmt.Println("waiting for started goroutines...")
+		wg1.Wait()
+		fmt.Println("started goroutines done")
 
-		for i := 0; i < len(proxies)-failedProxies; i++ {
+		end := false
+		for !end {
 			select {
 			case p := <-failed:
 				toScrapeList = append([]toScrape{p}, toScrapeList...)
-
 			case <-success:
-				//fmt.Println(i)
 				scraped++
 				fmt.Println(scraped)
-
+			default:
+				end = true
 			}
 		}
 
 		close(success)
 		close(failed)
+		fmt.Println("restarting...")
 
 		time.Sleep(10 * time.Second)
 
 	}
-
 }
 
 func scrapePost(post toScrape, success chan int, failed chan toScrape, order int, proxy string) {
+	defer wg1.Done()
 	owner := "unknown"
 	var reposts int
 
@@ -164,7 +184,6 @@ func scrapePost(post toScrape, success chan int, failed chan toScrape, order int
 	}
 
 	likes := make([]string, 0)
-	comments := make(map[string]struct{})
 
 	s := doc.Find(`a[class="header__back  al_back mh mh_noleftmenu"]`)
 	if s == nil {
@@ -228,40 +247,146 @@ func scrapePost(post toScrape, success chan int, failed chan toScrape, order int
 		}
 	}
 
-	visited := make(map[string]struct{})
+	postID := strings.Split(post.link, "wall")[1]
+
+	repliesSelector := fmt.Sprintf("#wall%s_replies", postID)
+
+	comments := make([]Comment, 0)
 
 	for {
-		doc.Find("a[class=\"ReplyItem__name\"]").Each(func(i int, s *goquery.Selection) {
-			if s == nil {
-				return
-			}
-			owner, exists := s.Attr("href")
-			if exists {
-				if _, ok := comments[owner]; !ok {
-					comments[owner] = struct{}{}
-				}
-			}
-		})
-		var next string
-		doc.Find("div[class=\"RepliesThreadNext Post__rowPadding\"]").EachWithBreak(func(i int, s *goquery.Selection) bool {
-			if s == nil {
-				return true
-			}
-			href, exists := s.Children().Attr("href")
-			if exists {
-				if _, ok := visited[href]; !ok {
-					visited[href] = struct{}{}
-					next = href
-					return false
-				}
-			}
-			return true
-		})
-		if next == "" {
+		replies := doc.Find(repliesSelector).Children()
+
+		if len(replies.Nodes) == 0 {
 			break
 		}
 
-		req, err := http.NewRequest("GET", root+next, nil)
+		var lastThreadOwner string
+
+		nextComments := ""
+
+		commentsFailed := false
+
+		replies.Each(func(i int, s *goquery.Selection) {
+			if s == nil || commentsFailed {
+				return
+			}
+			class, _ := s.Attr("class")
+
+			switch class {
+			case "ReplyItem Post__rowPadding":
+				t := s.Find("a[class=\"ReplyItem__name\"]")
+				commOwner, _ := t.Attr("href")
+
+				timeStr := s.Find(`a[class="item_date"]`).Text()
+				created := helpers.StrToTime(timeStr)
+
+				comm := Comment{
+					Owner:       commOwner,
+					ThreadOwner: owner,
+					Created:     created,
+				}
+
+				comments = append(comments, comm)
+
+				lastThreadOwner = commOwner
+
+			case "ReplyItem ReplyItem_deleted Post__rowPadding":
+				lastThreadOwner = "unknown"
+
+			case "RepliesThread":
+
+				threadID, _ := s.Attr("id")
+				threadSelector := "#" + threadID
+
+				threadDoc := doc
+				first := true
+				for {
+					thread := threadDoc.Find(threadSelector)
+					thread.Find(`div[class="ReplyItem Post__rowPadding"]`).Each(func(i int, s *goquery.Selection) {
+						if s == nil {
+							return
+						}
+
+						if first && lastThreadOwner == "unknown" {
+							threadOwner, _ := s.Find(`a[class="mem_link"]`).Attr("href")
+							if threadOwner != "" {
+								lastThreadOwner = threadOwner
+							}
+							first = false
+						}
+
+						t := s.Find("a[class=\"ReplyItem__name\"]")
+						subCommOwner, _ := t.Attr("href")
+
+						timeStr := s.Find(`a[class="item_date"]`).Text()
+						created := helpers.StrToTime(timeStr)
+
+						comm := Comment{
+							Owner:       subCommOwner,
+							ThreadOwner: lastThreadOwner,
+							Created:     created,
+						}
+
+						comments = append(comments, comm)
+					})
+
+					nextDiv := thread.Find("div[class=\"RepliesThreadNext Post__rowPadding\"]")
+
+					if nextDiv == nil {
+						break
+					}
+
+					nextHref, _ := nextDiv.Children().Attr("href")
+
+					if nextHref == "" {
+						break
+					}
+
+					req, err := http.NewRequest("GET", root+nextHref, nil)
+					if err != nil {
+						log.Fatal(err)
+					}
+
+					setHeaders(req)
+
+					resp, err := client.Do(req)
+					if err != nil {
+						log.Println(err)
+						commentsFailed = true
+						return
+					}
+
+					threadDoc, err = goquery.NewDocumentFromReader(resp.Body)
+					if err != nil {
+						log.Fatal(err)
+					}
+
+					resp.Body.Close()
+					time.Sleep(500 * time.Millisecond)
+
+				}
+			}
+
+		})
+
+		if commentsFailed {
+			failed <- post
+			return
+		}
+
+		next := replies.Nodes[len(replies.Nodes)-1]
+		t := next.FirstChild.Attr[1].Val
+		prev := strings.Contains(t, "prev")
+		splitedHref := strings.Split(t, "#")
+		if len(splitedHref) >= 2 && splitedHref[1] == "comments" && !prev {
+			nextComments = t
+		}
+
+		if nextComments == "" {
+			break
+		}
+
+		req, err := http.NewRequest("GET", root+nextComments, nil)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -281,18 +406,10 @@ func scrapePost(post toScrape, success chan int, failed chan toScrape, order int
 		}
 
 		resp.Body.Close()
-		time.Sleep(500 * time.Millisecond)
 	}
-
-	commentList := make([]string, 0, len(comments))
-	for c, _ := range comments {
-		commentList = append(commentList, c)
-	}
-
-	fmt.Println(len(likes), len(commentList), reposts)
 
 	wg.Add(1)
-	go updatePost(post.postID, owner, likes, commentList, reposts)
+	go updatePost(post.postID, owner, likes, comments, reposts)
 
 	success <- order
 
@@ -348,6 +465,11 @@ func getProxyList() []string {
 		line := scanner.Text()
 		proxies = append(proxies, line)
 	}
+
+	addProxies := getProxiesFromFreeProxyList()
+
+	proxies = append(proxies, addProxies...)
+
 	fmt.Println(len(proxies))
 
 	ch := make(chan string, len(proxies))
@@ -417,17 +539,50 @@ func testProxy(proxy string, ch chan string) {
 	}
 }
 
-func updatePost(id int, owner string, likes []string, comments []string, reposts int) {
+func updatePost(id int, owner string, likes []string, comments []Comment, reposts int) {
 	defer wg.Done()
-	mu.Lock()
-	defer mu.Unlock()
+	updatedPosts.mu.Lock()
+	defer updatedPosts.mu.Unlock()
+	updatedPosts.updated++
 
 	db.UpdatePost(owner, len(likes), len(comments), reposts, id)
+
 	for _, l := range likes {
 		db.WriteDownLike(id, l)
 	}
 
 	for _, c := range comments {
-		db.WriteDownComment(id, c)
+		db.WriteDownComment(id, c.Owner, c.ThreadOwner, c.Created)
 	}
+}
+
+func getProxiesFromFreeProxyList() []string {
+	client := &http.Client{}
+
+	req, err := http.NewRequest("GET", "https://free-proxy-list.net/", nil)
+	if err != nil {
+		log.Fatal(err)
+		return nil
+	}
+
+	setHeaders(req)
+
+	resp, err := client.Do(req)
+
+	if err != nil {
+		log.Println(err)
+		return nil
+	}
+	defer resp.Body.Close()
+
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	if err != nil {
+		log.Println(err)
+		return nil
+	}
+
+	proxiesText := doc.Find(`textarea[class="form-control"]`).Text()
+	proxyList := strings.Split(strings.TrimSuffix(proxiesText, "\n"), "\n")[3:]
+
+	return proxyList
 }

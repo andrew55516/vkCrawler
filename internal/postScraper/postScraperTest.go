@@ -38,17 +38,20 @@ func TestScrape() {
 	fmt.Println(k, len(hrefs))
 }
 
-func TestLikes() {
-	link := "/wall-69607966_26744"
+func TestScrapePost() {
+	// post 3054
+	//link := "/wall-22468706_111109"
+	link := "/wall-181047282_129604"
+	//link := "/wall-151650962_83259"
 
-	proxies := getProxyList()
-	fmt.Println(len(proxies))
+	//proxies := getProxyList()
+	//fmt.Println(len(proxies))
 
-	success := make(chan int, len(proxies))
-	failed := make(chan toScrape, len(proxies))
+	success := make(chan int, 1)
+	failed := make(chan toScrape, 1)
 
 	scrapePost(toScrape{
 		postID: -1,
 		link:   link,
-	}, success, failed, 0, proxies[0])
+	}, success, failed, 0, "")
 }

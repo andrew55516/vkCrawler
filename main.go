@@ -1,8 +1,6 @@
 package main
 
-import (
-	"vkCrawler/internal/cromedpWorker"
-)
+import "vkCrawler/internal/postScraper"
 
 func main() {
 	//scraped := db.GetLastPost().ID
@@ -15,7 +13,10 @@ func main() {
 	//		time.Sleep(10 * time.Minute)
 	//	}
 	//}
+	//
+	postScraper.ScrapeAllPosts()
+	//cromedpWorker.ScrapeUnknownPosts()
 
-	//postScraper.ScrapeAllPosts()
-	cromedpWorker.ScrapeUnknownPosts()
+	//postScraper.TestScrapePost()
+
 }

@@ -7,10 +7,11 @@ package db
 
 import (
 	"context"
+	"time"
 )
 
 const getComment = `-- name: GetComment :one
-SELECT id, post_id, owner from comments
+SELECT id, post_id, owner, thread_owner, created_at from comments
 WHERE post_id = $1 AND owner = $2
 `
 
@@ -22,24 +23,45 @@ type GetCommentParams struct {
 func (q *Queries) GetComment(ctx context.Context, arg GetCommentParams) (Comment, error) {
 	row := q.db.QueryRowContext(ctx, getComment, arg.PostID, arg.Owner)
 	var i Comment
-	err := row.Scan(&i.ID, &i.PostID, &i.Owner)
+	err := row.Scan(
+		&i.ID,
+		&i.PostID,
+		&i.Owner,
+		&i.ThreadOwner,
+		&i.CreatedAt,
+	)
 	return i, err
 }
 
 const writeDownComment = `-- name: WriteDownComment :one
 INSERT INTO comments (post_id,
-                      owner)
-VALUES ($1, $2) RETURNING id, post_id, owner
+                      owner,
+                      thread_owner,
+                      created_at)
+VALUES ($1, $2, $3, $4) RETURNING id, post_id, owner, thread_owner, created_at
 `
 
 type WriteDownCommentParams struct {
-	PostID int64  `json:"post_id"`
-	Owner  string `json:"owner"`
+	PostID      int64     `json:"post_id"`
+	Owner       string    `json:"owner"`
+	ThreadOwner string    `json:"thread_owner"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 func (q *Queries) WriteDownComment(ctx context.Context, arg WriteDownCommentParams) (Comment, error) {
-	row := q.db.QueryRowContext(ctx, writeDownComment, arg.PostID, arg.Owner)
+	row := q.db.QueryRowContext(ctx, writeDownComment,
+		arg.PostID,
+		arg.Owner,
+		arg.ThreadOwner,
+		arg.CreatedAt,
+	)
 	var i Comment
-	err := row.Scan(&i.ID, &i.PostID, &i.Owner)
+	err := row.Scan(
+		&i.ID,
+		&i.PostID,
+		&i.Owner,
+		&i.ThreadOwner,
+		&i.CreatedAt,
+	)
 	return i, err
 }

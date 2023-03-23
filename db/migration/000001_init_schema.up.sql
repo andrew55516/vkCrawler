@@ -1,4 +1,4 @@
-CREATE TABLE "posts" (
+CREATE TABLE IF NOT EXISTS "posts" (
                          "id" bigserial PRIMARY KEY,
                          "link" varchar NOT NULL unique,
                          "owner" varchar NOT NULL,
@@ -11,7 +11,9 @@ CREATE TABLE "posts" (
 CREATE TABLE "comments" (
                             "id" bigserial PRIMARY KEY,
                             "post_id" bigint NOT NULL,
-                            "owner" varchar NOT NULL
+                            "owner" varchar NOT NULL,
+                            "thread_owner" varchar NOT NULL,
+                            "created_at" timestamptz NOT NULL DEFAULT (now())
 );
 
 CREATE TABLE "likes" (

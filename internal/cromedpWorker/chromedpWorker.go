@@ -13,6 +13,7 @@ import (
 	"time"
 	db "vkCrawler/db/sqlc"
 	"vkCrawler/internal/helpers"
+	"vkCrawler/internal/postScraper"
 )
 
 const searchLink = "https://m.vk.com/search?c[q]=%23%D0%BA%D0%BB%D0%B8%D0%BC%D0%B0%D1%82&c[section]=statuses"
@@ -85,41 +86,27 @@ func ScrapeUnknownPosts() {
 
 	allocatorCtx, cancel1 := chromedp.NewExecAllocator(context.Background(), opts...)
 
-	ctx, cancel2 := chromedp.NewContext(allocatorCtx, chromedp.WithDebugf(log.Printf))
+	ctx, cancel2 := chromedp.NewContext(allocatorCtx)
 
 	login(ctx)
 
 	for len(posts) > 0 {
 
 		likes := make([]string, 0)
-		comments := make([]string, 0)
+		comments := make([]postScraper.Comment, 0)
 		var reposts int
 		var owner string
 
-		var ownerNodes, previewReactionNodes, repostNodes, commentNodes []*cdp.Node
-
 		chromedp.Run(ctx, chromedp.Navigate("https://m.vk.com/"+posts[0].Link))
 
-		//ctx1, cancel := context.WithTimeout(ctx, 10*time.Second)
 		var html string
 		chromedp.Run(ctx,
-			//chromedp.Navigate("https://m.vk.com/"+posts[0].Link),
-			//chromedp.WaitVisible(`body`, chromedp.BySearch),
-			//chromedp.Nodes(`a[class="ReactionsPreview"]`, &previewReactionNodes, chromedp.ByQuery),
 			chromedp.OuterHTML("html", &html),
-			//chromedp.Nodes(`a[class="PostBottomButton PostBottomButton--non-shrinkable"]`, &repostNodes, chromedp.ByQuery),
-			//chromedp.Nodes(`a[class="header__back  al_back mh mh_noleftmenu"]`, &ownerNodes, chromedp.ByQuery),
-			//chromedp.Nodes(`a[class="ReplyItem__name"]`, &commentNodes, chromedp.ByQueryAll),
-			//chromedp.Nodes(`a[class="RepliesThreadNext__link"]`, &nextCommentsNodes, chromedp.ByQueryAll),
 		)
-
-		//os.WriteFile("unknown.html", []byte(html), 0644)
-
-		//var likesExists, commentsExists, repostsExists, nextCommentsExists bool
 
 		reader := strings.NewReader(html)
 
-		doc, err := goquery.NewDocumentFromReader(reader)
+		doc, _ := goquery.NewDocumentFromReader(reader)
 
 		if doc.Find(`a[class="PostBottomButton PostBottomButton--non-shrinkable"]`).Length() == 0 {
 			cancel1()
@@ -132,154 +119,140 @@ func ScrapeUnknownPosts() {
 			login(ctx)
 			continue
 
-		} else {
-			chromedp.Run(ctx,
-				chromedp.Nodes(`a[class="PostBottomButton PostBottomButton--non-shrinkable"]`, &repostNodes, chromedp.ByQuery),
-				chromedp.Nodes(`a[class="header__back  al_back mh mh_noleftmenu"]`, &ownerNodes, chromedp.ByQuery),
-			)
+		}
+
+		s := doc.Find(`a[class="header__back  al_back mh mh_noleftmenu"]`)
+		href, _ := s.Attr("href")
+		owner = href
+
+		s = doc.Find(`a[class="PostBottomButton PostBottomButton--non-shrinkable"]`)
+		label, exists := s.Attr("aria-label")
+		if exists {
+			t := strings.Split(label, " ")
+			if k, err := strconv.Atoi(t[0]); err == nil {
+				reposts = k
+			}
 		}
 
 		if doc.Find(`a[class="RepliesThreadNext__link"]`).Length() > 0 {
 			chromedp.Run(ctx,
 				chromedp.Click(`a[class="RepliesThreadNext__link"]`, chromedp.ByQueryAll),
 			)
+
+			chromedp.Run(ctx,
+				chromedp.OuterHTML("html", &html),
+			)
+
+			reader := strings.NewReader(html)
+
+			doc, _ = goquery.NewDocumentFromReader(reader)
 		}
 
 		if doc.Find(`a[class="ReplyItem__name"]`).Length() > 0 {
-			chromedp.Run(ctx,
-				chromedp.Nodes(`a[class="ReplyItem__name"]`, &commentNodes, chromedp.ByQueryAll),
-			)
+			postID := strings.Split(posts[0].Link, "wall")[1]
+			repliesSelector := fmt.Sprintf("#wall%s_replies", postID)
+
+			replies := doc.Find(repliesSelector).Children()
+
+			var lastThreadOwner string
+
+			replies.Each(func(i int, s *goquery.Selection) {
+				if s == nil {
+					return
+				}
+				class, _ := s.Attr("class")
+
+				switch class {
+				case "ReplyItem Post__rowPadding":
+
+					t := s.Find("a[class=\"ReplyItem__name\"]")
+					commOwner, _ := t.Attr("href")
+
+					timeStr := s.Find(`a[class="item_date"]`).Text()
+					created := helpers.StrToTime(timeStr)
+
+					comm := postScraper.Comment{
+						Owner:       commOwner,
+						ThreadOwner: owner,
+						Created:     created,
+					}
+
+					comments = append(comments, comm)
+
+					lastThreadOwner = commOwner
+
+				case "RepliesThread":
+					s.Find(`div[class="ReplyItem Post__rowPadding"]`).Each(func(i int, s *goquery.Selection) {
+						if s == nil {
+							return
+						}
+
+						t := s.Find("a[class=\"ReplyItem__name\"]")
+						subCommOwner, _ := t.Attr("href")
+
+						timeStr := s.Find(`a[class="item_date"]`).Text()
+						created := helpers.StrToTime(timeStr)
+
+						comm := postScraper.Comment{
+							Owner:       subCommOwner,
+							ThreadOwner: lastThreadOwner,
+							Created:     created,
+						}
+
+						comments = append(comments, comm)
+					})
+				}
+			})
 		}
 
 		if doc.Find(`a[class="ReactionsPreview"]`).Length() > 0 {
-			chromedp.Run(ctx,
-				//chromedp.Navigate("https://m.vk.com/"+posts[0].Link),
-				chromedp.Nodes(`a[class="ReactionsPreview"]`, &previewReactionNodes, chromedp.ByQuery),
-			)
 
-			title := previewReactionNodes[0].AttributeValue("title")
+			s = doc.Find(`a[class="ReactionsPreview"]`)
+
+			title, _ := s.Attr("title")
 			t := strings.Split(title, " ")
 			likesAmount, err := strconv.Atoi(t[1])
 			if err != nil {
 				log.Fatal(err)
 			}
 
-			href := previewReactionNodes[0].AttributeValue("href")
+			href, _ = s.Attr("href")
 
 			for i := 0; i*50 < likesAmount; i++ {
 				link := fmt.Sprintf("https://m.vk.com/%s&offset=%v", href, i*50)
-				var likeNodes []*cdp.Node
 
-				ctx1, cancel := context.WithTimeout(ctx, 20*time.Second)
-				chromedp.Run(ctx1,
+				chromedp.Run(ctx,
 					chromedp.Navigate(link),
-					chromedp.WaitReady(`a[class^="inline_item"]`, chromedp.ByQueryAll),
-					chromedp.Nodes(`a[class^="inline_item"]`, &likeNodes, chromedp.ByQueryAll),
+					chromedp.OuterHTML("html", &html),
 				)
 
-				if len(likeNodes) == 0 {
-					cancel()
+				reader := strings.NewReader(html)
+
+				doc, _ = goquery.NewDocumentFromReader(reader)
+
+				if doc.Find(`a[class^="inline_item"]`).Length() > 0 {
+					doc.Find(`a[class^="inline_item"]`).Each(func(i int, s *goquery.Selection) {
+						href, exists := s.Attr("href")
+						if exists {
+							likes = append(likes, href)
+						}
+					})
+				} else {
+					//cancel()
 					cancel1()
 					cancel2()
 					resets++
 					allocatorCtx, cancel1 = chromedp.NewExecAllocator(context.Background(), opts...)
 
-					ctx, cancel2 = chromedp.NewContext(allocatorCtx, chromedp.WithDebugf(log.Printf))
+					ctx, cancel2 = chromedp.NewContext(allocatorCtx)
 
 					login(ctx)
 					i--
 					continue
 				}
-				cancel()
-
-				for _, n := range likeNodes {
-					likes = append(likes, n.AttributeValue("href"))
-				}
 			}
 
 		}
-
-		//cancel()
-
-		//ctx1, cancel = context.WithTimeout(ctx, 10*time.Second)
-		//chromedp.Run(ctx,
-		//	chromedp.Navigate("https://m.vk.com/"+posts[0].Link),
-		//	//chromedp.WaitVisible(`body`, chromedp.BySearch),
-		//	chromedp.Nodes(`a[class="ReactionsPreview"]`, &previewReactionNodes, chromedp.ByQuery),
-		//)
-		//cancel()
-
-		//if len(repostNodes) == 0 {
-		//	cancel1()
-		//	cancel2()
-		//	resets++
-		//	allocatorCtx, cancel1 = chromedp.NewExecAllocator(context.Background(), opts...)
-		//
-		//	ctx, cancel2 = chromedp.NewContext(allocatorCtx, chromedp.WithDebugf(log.Printf))
-		//
-		//	login(ctx)
-		//	continue
-		//}
-
-		owner = ownerNodes[0].AttributeValue("href")
-
-		title := repostNodes[0].AttributeValue("aria-label")
-		t := strings.Split(title, " ")
-		reposts, err = strconv.Atoi(t[0])
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		//for _, n := range nextCommentsNodes {
-		//	chromedp.Run(ctx,
-		//		chromedp.MouseClickNode(n),
-		//		chromedp.Sleep(300*time.Millisecond),
-		//	)
-		//}
-		//
-		//if len(commentNodes) > 0 {
-		//	chromedp.Run(ctx,
-		//		chromedp.WaitReady(`a[class="ReplyItem__name"]`, chromedp.ByQueryAll),
-		//		chromedp.Nodes(`a[class="ReplyItem__name"]`, &commentNodes, chromedp.ByQueryAll),
-		//	)
-		//}
-
-		comm := make(map[string]struct{})
-
-		for _, n := range commentNodes {
-			owner := n.AttributeValue("href")
-			if _, ok := comm[owner]; !ok {
-				comm[owner] = struct{}{}
-			}
-		}
-
-		for c, _ := range comm {
-			comments = append(comments, c)
-		}
-
-		//if len(previewReactionNodes) > 0 {
-		//	title := previewReactionNodes[0].AttributeValue("title")
-		//	t := strings.Split(title, " ")
-		//	likesAmount, err := strconv.Atoi(t[1])
-		//	if err != nil {
-		//		log.Fatal(err)
-		//	}
-		//
-		//	href := previewReactionNodes[0].AttributeValue("href")
-		//
-		//	for i := 0; i*50 < likesAmount; i++ {
-		//		link := fmt.Sprintf("https://m.vk.com/%s&offset=%v", href, i*50)
-		//		chromedp.Run(ctx,
-		//			chromedp.Navigate(link),
-		//			chromedp.WaitReady(`a[class^="inline_item"]`, chromedp.ByQueryAll),
-		//			chromedp.Nodes(`a[class^="inline_item"]`, &likeNodes, chromedp.ByQueryAll),
-		//		)
-		//		for _, n := range likeNodes {
-		//			likes = append(likes, n.AttributeValue("href"))
-		//		}
-		//	}
-		//}
-
 		fmt.Println(owner, likes, comments, reposts)
 
 		wg.Add(1)
@@ -296,7 +269,7 @@ func Crawl(wg *sync.WaitGroup) {
 	for !end {
 		allocatorCtx, cancel1 := chromedp.NewExecAllocator(context.Background(), opts...)
 
-		ctx, cancel2 := chromedp.NewContext(allocatorCtx, chromedp.WithDebugf(log.Printf))
+		ctx, cancel2 := chromedp.NewContext(allocatorCtx)
 
 		login(ctx)
 
@@ -391,10 +364,11 @@ func putPosts(posts []post, wg *sync.WaitGroup) {
 	}
 }
 
-func updatePost(id int, owner string, likes []string, comments []string, reposts int, wg *sync.WaitGroup) {
+func updatePost(id int, owner string, likes []string, comments []postScraper.Comment, reposts int, wg *sync.WaitGroup) {
 	defer wg.Done()
 	mu.Lock()
 	defer mu.Unlock()
+	//wg.Wait()
 
 	db.UpdatePost(owner, len(likes), len(comments), reposts, id)
 	for _, l := range likes {
@@ -402,6 +376,6 @@ func updatePost(id int, owner string, likes []string, comments []string, reposts
 	}
 
 	for _, c := range comments {
-		db.WriteDownComment(id, c)
+		db.WriteDownComment(id, c.Owner, c.ThreadOwner, c.Created)
 	}
 }

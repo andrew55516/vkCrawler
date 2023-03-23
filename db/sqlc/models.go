@@ -9,9 +9,11 @@ import (
 )
 
 type Comment struct {
-	ID     int64  `json:"id"`
-	PostID int64  `json:"post_id"`
-	Owner  string `json:"owner"`
+	ID          int64     `json:"id"`
+	PostID      int64     `json:"post_id"`
+	Owner       string    `json:"owner"`
+	ThreadOwner string    `json:"thread_owner"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 type Like struct {
