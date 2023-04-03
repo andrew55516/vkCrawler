@@ -10,6 +10,66 @@ import (
 	"time"
 )
 
+const getAllCommentsByThreadOwner = `-- name: GetAllCommentsByThreadOwner :many
+SELECT owner, created_at from comments
+WHERE thread_owner = $1
+`
+
+type GetAllCommentsByThreadOwnerRow struct {
+	Owner     string    `json:"owner"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+func (q *Queries) GetAllCommentsByThreadOwner(ctx context.Context, threadOwner string) ([]GetAllCommentsByThreadOwnerRow, error) {
+	rows, err := q.db.QueryContext(ctx, getAllCommentsByThreadOwner, threadOwner)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllCommentsByThreadOwnerRow
+	for rows.Next() {
+		var i GetAllCommentsByThreadOwnerRow
+		if err := rows.Scan(&i.Owner, &i.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getAllUnicCommentsOwners = `-- name: GetAllUnicCommentsOwners :many
+SELECT  Distinct owner from comments
+`
+
+func (q *Queries) GetAllUnicCommentsOwners(ctx context.Context) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, getAllUnicCommentsOwners)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var owner string
+		if err := rows.Scan(&owner); err != nil {
+			return nil, err
+		}
+		items = append(items, owner)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getComment = `-- name: GetComment :one
 SELECT id, post_id, owner, thread_owner, created_at from comments
 WHERE post_id = $1 AND owner = $2

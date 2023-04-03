@@ -148,3 +148,13 @@ func checkIfCommentExists(postID int64, owner string) bool {
 	}
 	return false
 }
+
+func FillAllNodes() error {
+	err := Q.FillAllNodes(context.Background())
+	return err
+}
+
+func FillAllEdges() error {
+	err := Q.FillAllEdges(context.Background())
+	return err
+}

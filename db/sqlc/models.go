@@ -8,6 +8,21 @@ import (
 	"time"
 )
 
+type AllEdge struct {
+	ID     int64     `json:"id"`
+	Source int64     `json:"source"`
+	Target int64     `json:"target"`
+	Start  time.Time `json:"start"`
+	End    time.Time `json:"end"`
+}
+
+type AllNode struct {
+	ID    int64     `json:"id"`
+	Label string    `json:"label"`
+	Start time.Time `json:"start"`
+	End   time.Time `json:"end"`
+}
+
 type Comment struct {
 	ID          int64     `json:"id"`
 	PostID      int64     `json:"post_id"`
@@ -16,10 +31,40 @@ type Comment struct {
 	CreatedAt   time.Time `json:"created_at"`
 }
 
+type CommentsEdge struct {
+	ID     int64     `json:"id"`
+	Source int64     `json:"source"`
+	Target int64     `json:"target"`
+	Start  time.Time `json:"start"`
+	End    time.Time `json:"end"`
+}
+
+type CommentsNode struct {
+	ID    int64     `json:"id"`
+	Label string    `json:"label"`
+	Start time.Time `json:"start"`
+	End   time.Time `json:"end"`
+}
+
 type Like struct {
 	ID     int64  `json:"id"`
 	PostID int64  `json:"post_id"`
 	Owner  string `json:"owner"`
+}
+
+type LikesEdge struct {
+	ID     int64     `json:"id"`
+	Source int64     `json:"source"`
+	Target int64     `json:"target"`
+	Start  time.Time `json:"start"`
+	End    time.Time `json:"end"`
+}
+
+type LikesNode struct {
+	ID    int64     `json:"id"`
+	Label string    `json:"label"`
+	Start time.Time `json:"start"`
+	End   time.Time `json:"end"`
 }
 
 type Post struct {

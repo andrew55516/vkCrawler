@@ -45,6 +45,33 @@ func (q *Queries) GetAllPosts(ctx context.Context) ([]Post, error) {
 	return items, nil
 }
 
+const getAllUnicPostsOwners = `-- name: GetAllUnicPostsOwners :many
+SELECT  Distinct owner from posts
+`
+
+func (q *Queries) GetAllUnicPostsOwners(ctx context.Context) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, getAllUnicPostsOwners)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var owner string
+		if err := rows.Scan(&owner); err != nil {
+			return nil, err
+		}
+		items = append(items, owner)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getLastPost = `-- name: GetLastPost :one
 SELECT id, link, owner, likes, comments, reposts, created_at FROM posts
 ORDER BY id DESC LIMIT 1

@@ -11,10 +11,10 @@ forcedbversion:
 	migrate -path db/migration -database "postgresql://root:pwd123@localhost:5432/crawler_db?sslmode=disable" force 1
 
 migrateup:
-	migrate -path db/migration -database "postgresql://root:pwd123@localhost:5432/crawler_db?sslmode=disable" -verbose up
+	migrate -path db/migration -database "postgresql://root:pwd123@localhost:5432/crawler_db?sslmode=disable" -verbose up 1
 
 migratedown:
-	migrate -path db/migration -database "postgresql://root:pwd123@localhost:5432/crawler_db?sslmode=disable" -verbose down
+	migrate -path db/migration -database "postgresql://root:pwd123@localhost:5432/crawler_db?sslmode=disable" -verbose down 1
 
 sqlc:
 	docker run --rm -v "%cd%:/src" -w /src kjconroy/sqlc generate

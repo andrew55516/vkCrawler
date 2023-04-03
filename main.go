@@ -1,6 +1,9 @@
 package main
 
-import "vkCrawler/internal/postScraper"
+import (
+	"log"
+	db "vkCrawler/db/sqlc"
+)
 
 func main() {
 	//scraped := db.GetLastPost().ID
@@ -14,9 +17,19 @@ func main() {
 	//	}
 	//}
 	//
-	postScraper.ScrapeAllPosts()
+	//postScraper.ScrapeAllPosts()
 	//cromedpWorker.ScrapeUnknownPosts()
 
 	//postScraper.TestScrapePost()
+
+	err := db.FillAllNodes()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = db.FillAllEdges()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 }

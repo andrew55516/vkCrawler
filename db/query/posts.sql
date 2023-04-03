@@ -24,4 +24,9 @@ RETURNING *;
 SELECT * FROM posts
 WHERE likes = -1;
 
+-- name: GetAllUnicPostsOwners :many
+SELECT  Distinct owner from posts;
+
+
+
 

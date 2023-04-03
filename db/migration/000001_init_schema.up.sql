@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS "posts" (
                          "created_at" timestamptz NOT NULL DEFAULT (now())
 );
 
-CREATE TABLE "comments" (
+CREATE TABLE IF NOT EXISTS "comments" (
                             "id" bigserial PRIMARY KEY,
                             "post_id" bigint NOT NULL,
                             "owner" varchar NOT NULL,
@@ -16,7 +16,7 @@ CREATE TABLE "comments" (
                             "created_at" timestamptz NOT NULL DEFAULT (now())
 );
 
-CREATE TABLE "likes" (
+CREATE TABLE IF NOT EXISTS "likes" (
                             "id" bigserial PRIMARY KEY,
                             "post_id" bigint NOT NULL,
                             "owner" varchar NOT NULL

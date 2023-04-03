@@ -9,6 +9,61 @@ import (
 	"context"
 )
 
+const getAllLikesByPostID = `-- name: GetAllLikesByPostID :many
+SELECT owner from likes
+WHERE post_id = $1
+`
+
+func (q *Queries) GetAllLikesByPostID(ctx context.Context, postID int64) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, getAllLikesByPostID, postID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var owner string
+		if err := rows.Scan(&owner); err != nil {
+			return nil, err
+		}
+		items = append(items, owner)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getAllUnicLikesOwners = `-- name: GetAllUnicLikesOwners :many
+SELECT  Distinct owner from likes
+`
+
+func (q *Queries) GetAllUnicLikesOwners(ctx context.Context) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, getAllUnicLikesOwners)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var owner string
+		if err := rows.Scan(&owner); err != nil {
+			return nil, err
+		}
+		items = append(items, owner)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getLike = `-- name: GetLike :one
 SELECT id, post_id, owner from likes
 WHERE post_id = $1 AND owner = $2
