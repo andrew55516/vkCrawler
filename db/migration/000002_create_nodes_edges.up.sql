@@ -2,16 +2,16 @@ CREATE TABLE IF NOT EXISTS "likes_nodes"
 (
     "id"         bigserial PRIMARY KEY,
     "label"      varchar     NOT NULL,
-    "start" timestamptz NOT NULL DEFAULT (now()),
-    "end"   timestamptz NOT NULL DEFAULT (now())
+    "start" date NOT NULL DEFAULT (now()),
+    "end"   date NOT NULL DEFAULT (now())
 );
 
 CREATE TABLE IF NOT EXISTS "comments_nodes"
 (
     "id"         bigserial PRIMARY KEY,
     "label"      varchar     NOT NULL,
-    "start" timestamptz NOT NULL DEFAULT (now()),
-    "end"   timestamptz NOT NULL DEFAULT (now())
+    "start" date NOT NULL DEFAULT (now()),
+    "end"   date NOT NULL DEFAULT (now())
 );
 
 CREATE TABLE IF NOT EXISTS "all_nodes"
@@ -28,8 +28,8 @@ CREATE TABLE IF NOT EXISTS "likes_edges"
     "source"      bigint     NOT NULL,
     "target"      bigint     NOT NULL,
 --     "weight"      bigint     NOT NULL,
-    "start" timestamptz NOT NULL DEFAULT (now()),
-    "end"   timestamptz NOT NULL DEFAULT (now())
+    "start" date NOT NULL DEFAULT (now()),
+    "end"   date NOT NULL DEFAULT (now())
 );
 
 CREATE TABLE IF NOT EXISTS "comments_edges"
@@ -38,8 +38,8 @@ CREATE TABLE IF NOT EXISTS "comments_edges"
     "source"      bigint     NOT NULL,
     "target"      bigint     NOT NULL,
 --     "weight"      bigint     NOT NULL,
-    "start" timestamptz NOT NULL DEFAULT (now()),
-    "end"   timestamptz NOT NULL DEFAULT (now())
+    "start" date NOT NULL DEFAULT (now()),
+    "end"   date NOT NULL DEFAULT (now())
 );
 
 CREATE TABLE IF NOT EXISTS "all_edges"

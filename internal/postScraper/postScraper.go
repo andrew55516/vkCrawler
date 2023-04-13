@@ -56,6 +56,10 @@ var updatedPosts = struct {
 }
 
 func ScrapeAllPosts() {
+	defer func() {
+		fmt.Sprintf("Updated %v posts", updatedPosts.updated)
+	}()
+
 	defer wg.Wait()
 
 	posts := db.GetAllPosts()

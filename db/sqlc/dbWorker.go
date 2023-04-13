@@ -158,3 +158,23 @@ func FillAllEdges() error {
 	err := Q.FillAllEdges(context.Background())
 	return err
 }
+
+func FillLikesNodes() error {
+	err := Q.FillLikesNodes(context.Background())
+	return err
+}
+
+func FillLikesEdges() error {
+	err := Q.FillLikesEdges(context.Background())
+	return err
+}
+
+func FillCommentsNodes() error {
+	err := Q.FillCommentsNodes(context.Background())
+	return err
+}
+
+func FillCommentsEdges() error {
+	err := Q.FillCommentsEdges(context.Background())
+	return err
+}
