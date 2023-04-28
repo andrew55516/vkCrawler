@@ -263,3 +263,39 @@ func (q *Queries) FillLikesNodes(ctx context.Context) error {
 	_, err := q.db.ExecContext(ctx, fillLikesNodes)
 	return err
 }
+
+const fillWeightedAllEdges = `-- name: FillWeightedAllEdges :exec
+insert into all_edges_weighted (source, target, start, weight)
+Select source, target, min(start) as start, count(*) as weight
+from all_edges
+group by source, target
+`
+
+func (q *Queries) FillWeightedAllEdges(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, fillWeightedAllEdges)
+	return err
+}
+
+const fillWeightedCommentsEdges = `-- name: FillWeightedCommentsEdges :exec
+insert into comments_edges_weighted (source, target, start, weight)
+Select source, target, min(start) as start, count(*) as weight
+from comments_edges
+group by source, target
+`
+
+func (q *Queries) FillWeightedCommentsEdges(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, fillWeightedCommentsEdges)
+	return err
+}
+
+const fillWeightedLikesEdges = `-- name: FillWeightedLikesEdges :exec
+insert into likes_edges_weighted (source, target, start, weight)
+Select source, target, min(start) as start, count(*) as weight
+from likes_edges
+group by source, target
+`
+
+func (q *Queries) FillWeightedLikesEdges(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, fillWeightedLikesEdges)
+	return err
+}

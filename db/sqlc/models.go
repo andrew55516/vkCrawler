@@ -16,6 +16,15 @@ type AllEdge struct {
 	End    time.Time `json:"end"`
 }
 
+type AllEdgesWeighted struct {
+	ID     int64     `json:"id"`
+	Source int64     `json:"source"`
+	Target int64     `json:"target"`
+	Weight int64     `json:"weight"`
+	Start  time.Time `json:"start"`
+	End    time.Time `json:"end"`
+}
+
 type AllNode struct {
 	ID    int64     `json:"id"`
 	Label string    `json:"label"`
@@ -39,6 +48,15 @@ type CommentsEdge struct {
 	End    time.Time `json:"end"`
 }
 
+type CommentsEdgesWeighted struct {
+	ID     int64     `json:"id"`
+	Source int64     `json:"source"`
+	Target int64     `json:"target"`
+	Weight int64     `json:"weight"`
+	Start  time.Time `json:"start"`
+	End    time.Time `json:"end"`
+}
+
 type CommentsNode struct {
 	ID    int64     `json:"id"`
 	Label string    `json:"label"`
@@ -56,6 +74,15 @@ type LikesEdge struct {
 	ID     int64     `json:"id"`
 	Source int64     `json:"source"`
 	Target int64     `json:"target"`
+	Start  time.Time `json:"start"`
+	End    time.Time `json:"end"`
+}
+
+type LikesEdgesWeighted struct {
+	ID     int64     `json:"id"`
+	Source int64     `json:"source"`
+	Target int64     `json:"target"`
+	Weight int64     `json:"weight"`
 	Start  time.Time `json:"start"`
 	End    time.Time `json:"end"`
 }

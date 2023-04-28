@@ -178,3 +178,22 @@ func FillCommentsEdges() error {
 	err := Q.FillCommentsEdges(context.Background())
 	return err
 }
+
+func FillWeightedAllEdges() error {
+	err := Q.FillWeightedAllEdges(context.Background())
+	return err
+}
+
+func FillWeightedLikesEdges() error {
+	err := Q.FillWeightedLikesEdges(context.Background())
+	return err
+}
+
+func FillWeightedCommentsEdges() error {
+	err := Q.FillWeightedCommentsEdges(context.Background())
+	return err
+}
+
+func GetLikesOnlyUsers(to_time time.Time) ([]string, error) {
+	return Q.GetLikesOnlyUsers(context.Background(), to_time)
+}

@@ -72,6 +72,25 @@ from (select t.id as source, s.id as target, c.created_at as start
                join comments c on s.label = c.thread_owner
                join comments_nodes t on t.label = c.owner) as u;
 
+-- name: FillWeightedAllEdges :exec
+insert into all_edges_weighted (source, target, start, weight)
+Select source, target, min(start) as start, count(*) as weight
+from all_edges
+group by source, target;
+
+-- name: FillWeightedLikesEdges :exec
+insert into likes_edges_weighted (source, target, start, weight)
+Select source, target, min(start) as start, count(*) as weight
+from likes_edges
+group by source, target;
+
+-- name: FillWeightedCommentsEdges :exec
+insert into comments_edges_weighted (source, target, start, weight)
+Select source, target, min(start) as start, count(*) as weight
+from comments_edges
+group by source, target;
+
+
 -- name: CreateLikeNode :one
 INSERT INTO likes_nodes (label, start)
 VALUES ($1, $2)
