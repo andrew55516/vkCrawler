@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"github.com/xuri/excelize/v2"
+	"strings"
 	"time"
 	db "vkCrawler/db/sqlc"
 )
@@ -61,28 +62,31 @@ func LikesOnlyUsersToXLSX() error {
 			}
 		}
 
-		f.SetCellValue("LikesOnlyUsers", cols[i-1]+"1", toTime.String())
+		dateStr := strings.TrimSuffix(toTime.String(), " 00:00:00 +0300 MSK")
+		dateStr = strings.Replace(dateStr, "-", ".", -1)
+
+		f.SetCellValue("LikesOnlyUsers", cols[i-1]+"1", dateStr)
 		for j, user := range users {
 			f.SetCellValue("LikesOnlyUsers", cols[i-1]+fmt.Sprintf("%d", j+2), user)
 		}
 
-		f.SetCellValue("NewLikesOnlyUsers", cols[i-1]+"1", toTime.String())
+		f.SetCellValue("NewLikesOnlyUsers", cols[i-1]+"1", dateStr)
 		for j, user := range newUsers {
 			f.SetCellValue("NewLikesOnlyUsers", cols[i-1]+fmt.Sprintf("%d", j+2), user)
 		}
 
-		f.SetCellValue("BecameCommenter", cols[i-1]+"1", toTime.String())
+		f.SetCellValue("BecameCommenter", cols[i-1]+"1", dateStr)
 		for j, user := range becameCommenter {
 			f.SetCellValue("BecameCommenter", cols[i-1]+fmt.Sprintf("%d", j+2), user)
 		}
 
-		f.SetCellValue("AmountOfLikesOnlyUsers", cols[i-1]+"1", toTime.String())
+		f.SetCellValue("AmountOfLikesOnlyUsers", cols[i-1]+"1", dateStr)
 		f.SetCellValue("AmountOfLikesOnlyUsers", cols[i-1]+"2", len(users))
 
-		f.SetCellValue("AmountOfNewLikesOnlyUsers", cols[i-1]+"1", toTime.String())
+		f.SetCellValue("AmountOfNewLikesOnlyUsers", cols[i-1]+"1", dateStr)
 		f.SetCellValue("AmountOfNewLikesOnlyUsers", cols[i-1]+"2", len(newUsers))
 
-		f.SetCellValue("AmountOfBecameCommenter", cols[i-1]+"1", toTime.String())
+		f.SetCellValue("AmountOfBecameCommenter", cols[i-1]+"1", dateStr)
 		f.SetCellValue("AmountOfBecameCommenter", cols[i-1]+"2", len(becameCommenter))
 
 		lastUsers = make(map[string]bool, 0)
