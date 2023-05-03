@@ -150,50 +150,47 @@ func checkIfCommentExists(postID int64, owner string) bool {
 }
 
 func FillAllNodes() error {
-	err := Q.FillAllNodes(context.Background())
-	return err
+	return Q.FillAllNodes(context.Background())
+
 }
 
 func FillAllEdges() error {
-	err := Q.FillAllEdges(context.Background())
-	return err
+	return Q.FillAllEdges(context.Background())
 }
 
 func FillLikesNodes() error {
-	err := Q.FillLikesNodes(context.Background())
-	return err
+	return Q.FillLikesNodes(context.Background())
 }
 
 func FillLikesEdges() error {
-	err := Q.FillLikesEdges(context.Background())
-	return err
+	return Q.FillLikesEdges(context.Background())
 }
 
 func FillCommentsNodes() error {
-	err := Q.FillCommentsNodes(context.Background())
-	return err
+	return Q.FillCommentsNodes(context.Background())
 }
 
 func FillCommentsEdges() error {
-	err := Q.FillCommentsEdges(context.Background())
-	return err
+	return Q.FillCommentsEdges(context.Background())
 }
 
 func FillWeightedAllEdges() error {
-	err := Q.FillWeightedAllEdges(context.Background())
-	return err
+	return Q.FillWeightedAllEdges(context.Background())
 }
 
 func FillWeightedLikesEdges() error {
-	err := Q.FillWeightedLikesEdges(context.Background())
-	return err
+	return Q.FillWeightedLikesEdges(context.Background())
 }
 
 func FillWeightedCommentsEdges() error {
-	err := Q.FillWeightedCommentsEdges(context.Background())
-	return err
+	return Q.FillWeightedCommentsEdges(context.Background())
 }
 
-func GetLikesOnlyUsers(to_time time.Time) ([]string, error) {
-	return Q.GetLikesOnlyUsers(context.Background(), to_time)
+func GetLikesOnlyUsers(toTime time.Time) ([]string, error) {
+	return Q.GetLikesOnlyUsers(context.Background(), toTime)
+}
+
+func GetAmountOfUsers(toTime time.Time) (int, error) {
+	amount, err := Q.GetAmountOfUsers(context.Background(), toTime)
+	return int(amount), err
 }

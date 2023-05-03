@@ -11,3 +11,7 @@ where not exists(
         where owner = u.label
           and created_at < $1
     );
+
+-- name: GetAmountOfUsers :one
+select count(label) from all_nodes
+where start < $1;

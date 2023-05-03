@@ -62,6 +62,11 @@ func LikesOnlyUsersToXLSX() error {
 			}
 		}
 
+		totalAmount, err := db.GetAmountOfUsers(toTime)
+		if err != nil {
+			return err
+		}
+
 		dateStr := strings.TrimSuffix(toTime.String(), " 00:00:00 +0300 MSK")
 		dateStr = strings.Replace(dateStr, "-", ".", -1)
 
@@ -82,9 +87,11 @@ func LikesOnlyUsersToXLSX() error {
 
 		f.SetCellValue("AmountOfLikesOnlyUsers", cols[i-1]+"1", dateStr)
 		f.SetCellValue("AmountOfLikesOnlyUsers", cols[i-1]+"2", len(users))
+		f.SetCellValue("AmountOfLikesOnlyUsers", cols[i-1]+"3", float64(len(users))/float64(totalAmount))
 
 		f.SetCellValue("AmountOfNewLikesOnlyUsers", cols[i-1]+"1", dateStr)
 		f.SetCellValue("AmountOfNewLikesOnlyUsers", cols[i-1]+"2", len(newUsers))
+		f.SetCellValue("AmountOfNewLikesOnlyUsers", cols[i-1]+"3", float64(len(newUsers))/float64(totalAmount))
 
 		f.SetCellValue("AmountOfBecameCommenter", cols[i-1]+"1", dateStr)
 		f.SetCellValue("AmountOfBecameCommenter", cols[i-1]+"2", len(becameCommenter))

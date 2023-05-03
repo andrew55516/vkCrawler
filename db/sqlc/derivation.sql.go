@@ -10,6 +10,18 @@ import (
 	"time"
 )
 
+const getAmountOfUsers = `-- name: GetAmountOfUsers :one
+select count(label) from all_nodes
+where start < $1
+`
+
+func (q *Queries) GetAmountOfUsers(ctx context.Context, start time.Time) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getAmountOfUsers, start)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const getLikesOnlyUsers = `-- name: GetLikesOnlyUsers :many
 select distinct(u.label)
 from (select ln.label as label
